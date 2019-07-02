@@ -30,6 +30,8 @@ if (isset($_POST['tab'])) {
         editParticipantStatusFields($db, $user);
     } else if ($tab == "consentStatus") {
         editConsentStatusFields($db, $user);
+    } else if ($tab == "candidateDOB") {
+        editCandidateDOB($db, $user);
     } else {
         header("HTTP/1.1 404 Not Found");
         exit;
@@ -404,12 +406,12 @@ function editConsentStatusFields($db, $user)
 
     // Get CandID
     $candIDParam = $_POST['candID'];
-    $candID      = (isset($candIDParam) && $candIDParam !== 'null') ?
+    $candID = (isset($candIDParam) && $candIDParam !== 'null') ?
         $candIDParam : null;
 
-    $candidate   = \Candidate::singleton($candID);
+    $candidate = \Candidate::singleton($candID);
     $currentUser = \User::singleton();
-    $uid         = $currentUser->getUsername();
+    $uid = $currentUser->getUsername();
 
     // Get PSCID
     $pscid = $candidate->getPSCID();
@@ -419,94 +421,94 @@ function editConsentStatusFields($db, $user)
     // Get list of consents for candidate
     $candidateConsent = $candidate->getConsents();
 
-    foreach ($consentDetails as $consentID=>$consent) {
-        $consentName  = $consent['Name'];
+    foreach ($consentDetails as $consentID => $consent) {
+        $consentName = $consent['Name'];
         $consentLabel = $consent['Label'];
 
         // Process posted data
         // Empty strings and type null are not passed (null is passed as a string)
-        $status     = ($_POST[$consentName] !== 'null') ?
-                        $_POST[$consentName] : null;
-        $date       = ($_POST[$consentName . '_date'] !== 'null') ?
-                        $_POST[$consentName . '_date'] : null;
+        $status = ($_POST[$consentName] !== 'null') ?
+            $_POST[$consentName] : null;
+        $date = ($_POST[$consentName . '_date'] !== 'null') ?
+            $_POST[$consentName . '_date'] : null;
         $withdrawal = ($_POST[$consentName . '_withdrawal'] !== 'null') ?
-                        $_POST[$consentName . '_withdrawal'] : null;
+            $_POST[$consentName . '_withdrawal'] : null;
 
-        $updateStatus  = [
-                          'CandidateID'   => $candID,
-                          'ConsentID'     => $consentID,
-                          'Status'        => $status,
-                          'DateGiven'     => $date,
-                          'DateWithdrawn' => $withdrawal,
-                         ];
+        $updateStatus = [
+            'CandidateID' => $candID,
+            'ConsentID' => $consentID,
+            'Status' => $status,
+            'DateGiven' => $date,
+            'DateWithdrawn' => $withdrawal,
+        ];
         $updateHistory = [
-                          'PSCID'         => $pscid,
-                          'ConsentName'   => $consentName,
-                          'ConsentLabel'  => $consentLabel,
-                          'Status'        => $status,
-                          'DateGiven'     => $date,
-                          'DateWithdrawn' => $withdrawal,
-                          'EntryStaff'    => $uid,
-                         ];
+            'PSCID' => $pscid,
+            'ConsentName' => $consentName,
+            'ConsentLabel' => $consentLabel,
+            'Status' => $status,
+            'DateGiven' => $date,
+            'DateWithdrawn' => $withdrawal,
+            'EntryStaff' => $uid,
+        ];
 
         // Validate data
         $recordExists = array_key_exists($consentID, $candidateConsent);
-        $oldStatus    = $candidateConsent[$consentID]['Status'] ?? null;
-        $validated    = false;
+        $oldStatus = $candidateConsent[$consentID]['Status'] ?? null;
+        $validated = false;
 
         switch ($status) {
-        case 'yes':
-            // Giving "yes" status requires consent date and empty withdrawal date
-            if (!empty($date) && empty($withdrawal)) {
-                $validated = true;
-            } else {
-                http_response_code(400);
-                echo('Data failed validation. Resolve errors and try again.');
-                return;
-            }
-            break;
-        case 'no':
-            // Giving 'no' status requires consent date and empty withdrawal date if
-            // record does not already exist
-            if (!$recordExists) {
+            case 'yes':
+                // Giving "yes" status requires consent date and empty withdrawal date
                 if (!empty($date) && empty($withdrawal)) {
-                    $validated = true;
-                } else {
-                    http_response_code(400);
-                    echo('Answering no to a consent type for the first time
-                          requires only the date of consent.');
-                    return;
-                }
-            } else { // If no status stays no or record existed as NULL,
-                     // consent date and empty withdrawal date still required
-                if (($oldStatus === null || $oldStatus === 'no') && !empty($date)
-                    && empty($withdrawal)
-                ) {
-                    $validated = true;
-                } else if ($oldStatus === 'yes' && !empty($date)
-                    && !empty($withdrawal)
-                ) { // Withdrawing from 'yes' status required consent date
-                    // and withdrawal date
                     $validated = true;
                 } else {
                     http_response_code(400);
                     echo('Data failed validation. Resolve errors and try again.');
                     return;
                 }
-            }
-            break;
-        default:
-            // If status is empty, and date fields are also empty,
-            // validated is still false
-            // If status is empty but at least one of the date fields
-            // are filled, throw an error
-            if (!empty($date) || !empty($withdrawal)) {
-                http_response_code(400);
-                echo('A status is missing for at least one consent type.
+                break;
+            case 'no':
+                // Giving 'no' status requires consent date and empty withdrawal date if
+                // record does not already exist
+                if (!$recordExists) {
+                    if (!empty($date) && empty($withdrawal)) {
+                        $validated = true;
+                    } else {
+                        http_response_code(400);
+                        echo('Answering no to a consent type for the first time
+                          requires only the date of consent.');
+                        return;
+                    }
+                } else { // If no status stays no or record existed as NULL,
+                    // consent date and empty withdrawal date still required
+                    if (($oldStatus === null || $oldStatus === 'no') && !empty($date)
+                        && empty($withdrawal)
+                    ) {
+                        $validated = true;
+                    } else if ($oldStatus === 'yes' && !empty($date)
+                        && !empty($withdrawal)
+                    ) { // Withdrawing from 'yes' status required consent date
+                        // and withdrawal date
+                        $validated = true;
+                    } else {
+                        http_response_code(400);
+                        echo('Data failed validation. Resolve errors and try again.');
+                        return;
+                    }
+                }
+                break;
+            default:
+                // If status is empty, and date fields are also empty,
+                // validated is still false
+                // If status is empty but at least one of the date fields
+                // are filled, throw an error
+                if (!empty($date) || !empty($withdrawal)) {
+                    http_response_code(400);
+                    echo('A status is missing for at least one consent type.
                       Please select a valid status for all consent types.');
-                return;
-            }
-            break;
+                    return;
+                }
+                break;
         }
 
         // Submit data
@@ -516,8 +518,8 @@ function editConsentStatusFields($db, $user)
                     'candidate_consent_rel',
                     $updateStatus,
                     array(
-                     'CandidateID' => $candID,
-                     'ConsentID'   => $consentID,
+                        'CandidateID' => $candID,
+                        'ConsentID' => $consentID,
                     )
                 );
             } else {
@@ -527,3 +529,27 @@ function editConsentStatusFields($db, $user)
         }
     }
 }
+
+/**
+ * Handles the updating of candidate's date of birth.
+ *
+ * @param Database $db database object
+ * @param User $user user object
+ *
+ * @throws DatabaseException
+ *
+ * @return void
+ */
+function editCandidateDOB($db, $user)
+{
+    if (!$user->hasPermission('candidate_parameter_edit')
+        || !$user->hasPermission('candidate_dob_edit')) {
+        header("HTTP/1.1 403 Forbidden");
+        exit;
+    }
+    $candID = $_POST['candID'];
+    $dob = $_POST['dob'];
+    $strippedDate = date("Y-m",strtotime($dob))."-01";
+    $db->update('candidate', array('DoB' => $strippedDate), array('CandID' => $candID));
+}
+
